@@ -1,0 +1,7 @@
+{
+    title: "Review",
+    type: "object",
+    properties: {
+        "name":"string",
+        "age":"integer"
+}
