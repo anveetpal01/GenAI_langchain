@@ -1,0 +1,53 @@
+two categories of runnables
+
+task specific runnables
+ - definition: these are core lagnchain components that have been converted into Runnables so they can be used in pipelines.
+ - Perform: Perform task-specific operations like LLM calls. prompting, retrieval, etc.
+ - ex: ChatOpenAI, Prompttemplate, retriever
+
+
+runnables primitives
+
+ - these are fundamental building blocks for structuring execution logic in AI workflows
+ - purpose : they help in orchestrate execution by defining how different runnables interact 
+ (sequentially, prallel, conditionally, etc)
+ 
+
+
+
+# RUNNABLE SEQUENCE- 
+iski help se do ya do se jada runnables ko sequentially connect kar sakte hai.
+
+is a sequential chain of runnables in langchain that executes each step one after another, passing the output of one step as the input to the next.
+
+it is useful when you need to compose multiiple runnables together in a structured workflow.
+
+#RUNNABLEPARALLEL
+
+is a runnable primitive that allows multiple runnables to execute in parallel.
+each runnable receives the same input and process it independentily, prducing a dictionary.
+
+
+#Runnable Passthrough
+Is a special runnable primitive that simply returns the input as output without modifying it.
+jo input milta hai runnable passthrough ussko as it is output dedeta hai.\
+
+
+#Runnable Lambda
+Kisi bhi python function ko runnable me convert kar sakte hai.
+Runnable lambda is a runnable primitive that allows you to apply custom python functions withing an AI pipeline.
+It acts as a middleware between different AI components, enabling preprocessing, transformation, API calls, filtering and post-processing in a LangChain workflow.
+* kisi bhi chain me custom logic use karna hai to runnable lambda use karte hai.
+
+
+# Runnable Branch:
+condition banane ke liye use hota hai, langchain ke universe ka if else.
+* is a control flow component in lagnchain that allows you to conditionally route input data to different chains or runnables based on custom logic.
+
+It fucntions like an if/elif/else block for chains - where you define a set of condition functions, each associated with a runnable. The first matching condition is executed. If no condition matches, a default runnable is used (if provided).
+
+
+#LCEL 
+LangChain Expression Language
+
+matlab ki '|' pipe operator runnable sequence ke liye declare ho chuka hai.
