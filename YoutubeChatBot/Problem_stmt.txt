@@ -1,0 +1,28 @@
+ek youtube chat bot bana rahe hai jo ki youtube videos jo bhi tum play karrhe ho
+uske baare me batayega, tum uss perticular video ke baare me chat kar sakte ho.
+
+
+plan of action
+1. pehle youtube ka transcript fetch karke load karenge(langchain ytloader document loader | yt api)
+youtube ka id denge and fir uska transcript load karke laaenge
+
+2. text splitter laga ke uss transcript ke multiple chunks karenge
+
+3. multiple chunks generate hone ke baad unko embedd kardenge
+
+4. unn embedding ko vector store me store karenge
+
+YE INDEXING WALA KAAM COMPLETE, STEP 1
+
+baad me we will create a RETRIEVER
+iss RETRIEVER(similarity search baseed) ko query send karenge, RETRIEVER query ko embedd karega
+fir vector store me semantic search perform karega
+
+YE STEP 2 COMPLETE RETRIEVAL
+
+most relevant chunks + query = PROMPT
+SETP 3 COMPLETE, PROMPT GENERATION
+
+fir PROMPT ko llm ke paas bhejenge 
+LLM prompt ko samjhega, query ko samjhega fir ek RESPONSE generate karega.
+STEP 4 RESPONSE GENERATION
