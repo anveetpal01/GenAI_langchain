@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube Video Chat",
+  "version": "0.3.0",
+  "description": "Chat with the YouTube video you are watching. Answers cite timestamps you can click to jump there.",
+  "minimum_chrome_version": "114",
+  "permissions": ["sidePanel", "storage"],
+  "host_permissions": ["*://*.youtube.com/*"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "content_scripts": [
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "side_panel": { "default_path": "sidepanel/index.html" },
+  "options_page": "options/index.html",
+  "action": { "default_title": "Chat with this video" }
+}

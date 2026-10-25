@@ -1,0 +1,42 @@
+1. UI based enhancements - give ui to this chat bot, make a plugin of it and user can install it ans use it.
+
+2. Evaluation
+ a. Ragas 
+ b. LangSmit - tracing ke liye use hoti hai
+
+metric for Evaluation in Ragas
+faithfulness - Is the answer grounded in the retrieved context?
+answer_relevancy - Is the answer relevant to the user's question?
+context_precision - How much of the retrieved context is actually useful?
+context_recall - Did we retrieve all necessary information?
+
+3. Indexing
+ a. Document Ingestion
+ b. Text Splitting
+ c. Vector store
+
+4. Retrieval
+ a. Pre-Retrieval
+  i. Query rewriting using LLM
+  ii. Multi Query generation
+  iii. Domain aware routing
+ b. During retrieval
+  i. MMR
+  ii. Hybrid Retrieval
+  iii. Reranking
+ c. Post-Retrieval
+ i. Contextual Compression
+
+5. Augmentation
+ a. Prompt Templating
+ b. Answer grounding
+ c. Context window optimization
+
+6. Generation
+ a. Answer with Citation
+ b. Guard railing
+
+7. System Design
+ a. Multimodal
+ b. Agentic
+ c. Memory based 
