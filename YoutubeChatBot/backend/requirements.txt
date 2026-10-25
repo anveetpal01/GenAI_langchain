@@ -1,0 +1,23 @@
+# Ingestion
+youtube-transcript-api>=1.2,<2
+tiktoken>=0.7
+
+# Indexing + retrieval (local models, SRS C-2)
+sentence-transformers>=3.0
+chromadb>=0.5
+rank-bm25>=0.2.2
+numpy>=1.26
+
+# LLM layer (SRS FR-GEN-01): add the provider package you use
+langchain>=0.3
+langchain-core>=0.3
+langchain-groq>=0.2
+langchain-google-genai>=2.0
+
+# API
+fastapi>=0.115
+uvicorn[standard]>=0.30
+sse-starlette>=2.1
+pydantic>=2.7
+pydantic-settings>=2.4
+python-dotenv>=1.0
