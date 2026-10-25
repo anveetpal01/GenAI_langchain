@@ -6,3 +6,9 @@ __pycache__/
 /gitconfigs
 .gitconfig
 *.gitignore
+*venv
+
+# YoutubeChatBot runtime data (Chroma, BM25 corpus, chat history)
+YoutubeChatBot/backend/data/
+node_modules/
+dist/

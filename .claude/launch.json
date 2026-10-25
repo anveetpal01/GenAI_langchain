@@ -1,0 +1,30 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "yt-chatbot-api",
+      "runtimeExecutable": "D:/GenAI_langchain/YoutubeChatBot/venv/Scripts/python.exe",
+      "runtimeArgs": [
+        "-m",
+        "uvicorn",
+        "app.main:app",
+        "--app-dir",
+        "D:/GenAI_langchain/YoutubeChatBot/backend",
+        "--port",
+        "8000"
+      ],
+      "port": 8000
+    },
+    {
+      "name": "yt-chatbot-extension-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "D:/GenAI_langchain/YoutubeChatBot/extension",
+        "run",
+        "dev"
+      ],
+      "port": 5173
+    }
+  ]
+}
