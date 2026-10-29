@@ -99,6 +99,7 @@ class Settings(BaseSettings):
 
     # API
     # Empty = any chrome-extension:// origin (dev). Set your extension ID for release.
+    api_key: str = ""
     allowed_extension_ids: list[str] = []
 
 

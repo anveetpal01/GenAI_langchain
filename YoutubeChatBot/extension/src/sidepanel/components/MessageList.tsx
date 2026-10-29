@@ -6,6 +6,7 @@ import { AnswerText } from "./AnswerText";
 const SETTINGS_FIXABLE = new Set([
   "backend_unreachable",
   "missing_api_key",
+  "unauthorized",
   "llm_unavailable",
   "llm_rate_limited",
   "llm_auth",

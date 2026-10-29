@@ -6,12 +6,13 @@
 from __future__ import annotations
 
 import json
+import secrets
 import logging
 import threading
 from contextlib import asynccontextmanager
 from typing import Annotated
 
-from fastapi import BackgroundTasks, FastAPI, Header, Path, Request, status
+from fastapi import BackgroundTasks, FastAPI, Header, Path, Request, status, Depends
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -48,6 +49,11 @@ async def lifespan(app: FastAPI):
     threading.Thread(target=_warm_up, daemon=True).start()
     yield
 
+def require_api_key(x_api_key: Annotated[str | None, Header()] = None) -> None:
+    """Every /v1 call must carry the shared key; /healthz and /readyz stay open."""
+    expected = get_settings().api_key
+    if expected and not (x_api_key and secrets.compare_digest(x_api_key, expected)):
+        raise GuardrailError("unauthorized", "Missing or invalid API key.", status=401)
 
 app = FastAPI(title="YouTube Video Chat Assistant", version="0.3.0", lifespan=lifespan)
 
@@ -60,7 +66,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origin_regex=rf"^(chrome-extension://({_ext_origins})|http://(localhost|127\.0\.0\.1)(:\d+)?)$",
     allow_methods=["GET", "POST", "DELETE"],
-    allow_headers=["Content-Type", "X-LLM-Provider", "X-LLM-Model", "X-LLM-API-Key", "X-Cache"],
+    allow_headers=["Content-Type", "X-API-Key", "X-LLM-Provider", "X-LLM-Model", "X-LLM-API-Key", "X-Cache"],
 )
 
 
@@ -150,7 +156,7 @@ def readyz():
     return JSONResponse(body, status_code=200 if body["ready"] else 503)
 
 
-@app.post("/v1/videos/{video_id}/index", status_code=status.HTTP_202_ACCEPTED, response_model=VideoStatus)
+@app.post("/v1/videos/{video_id}/index", status_code=status.HTTP_202_ACCEPTED, response_model=VideoStatus, dependencies=[Depends(require_api_key)])
 def index_video(video_id: VideoId, background: BackgroundTasks, force: bool = False):
     current = indexing.get_status(video_id)
     if current["state"] == "ready" and not force:
@@ -160,12 +166,12 @@ def index_video(video_id: VideoId, background: BackgroundTasks, force: bool = Fa
     return VideoStatus(video_id=video_id, **indexing.get_status(video_id))
 
 
-@app.get("/v1/videos/{video_id}/status", response_model=VideoStatus)
+@app.get("/v1/videos/{video_id}/status", response_model=VideoStatus, dependencies=[Depends(require_api_key)])
 def video_status(video_id: VideoId):
     return VideoStatus(video_id=video_id, **indexing.get_status(video_id))
 
 
-@app.post("/v1/videos/{video_id}/chat")
+@app.post("/v1/videos/{video_id}/chat", dependencies=[Depends(require_api_key)])
 async def chat(
     video_id: VideoId,
     body: ChatRequest,
@@ -187,13 +193,13 @@ async def chat(
     return EventSourceResponse(events())
 
 
-@app.get("/v1/videos/{video_id}/sessions/{session_id}", response_model=SessionHistory)
+@app.get("/v1/videos/{video_id}/sessions/{session_id}", response_model=SessionHistory, dependencies=[Depends(require_api_key)])
 def get_session(video_id: VideoId, session_id: SessionId):
     return SessionHistory(
         video_id=video_id, session_id=session_id, messages=memory.get_history(video_id, session_id)
     )
 
 
-@app.delete("/v1/videos/{video_id}/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+@app.delete("/v1/videos/{video_id}/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_api_key)])
 def delete_session(video_id: VideoId, session_id: SessionId):
     memory.clear_history(video_id, session_id)

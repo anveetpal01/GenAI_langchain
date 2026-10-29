@@ -48,7 +48,9 @@ export class BackendClient {
   private async request(path: string, init: RequestInit = {}): Promise<Response> {
     let res: Response;
     try {
-      res = await fetch(this.url(path), init);
+      const headers = new Headers(init.headers);
+      if (this.settings.backendKey) headers.set("X-API-Key", this.settings.backendKey);
+      res = await fetch(this.url(path), { ...init, headers });
     } catch (err) {
       if ((err as Error).name === "AbortError") throw err;
       throw new ApiError(

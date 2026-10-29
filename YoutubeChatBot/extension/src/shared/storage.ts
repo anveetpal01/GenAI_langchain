@@ -7,6 +7,8 @@ export interface Settings {
   provider: string;
   model: string;
   apiKey: string;
+  /** Sent as X-API-Key; must match API_KEY in backend/.env. */
+  backendKey: string;
   /** Index as soon as a video opens, instead of on the first question (SRS D-11). */
   autoIndex: boolean;
 }
@@ -16,6 +18,7 @@ export const DEFAULT_SETTINGS: Settings = {
   provider: "",
   model: "",
   apiKey: "",
+  backendKey: "",
   autoIndex: false,
 };
 

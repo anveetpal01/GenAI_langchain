@@ -74,6 +74,15 @@ export function Options() {
               {testing ? "Testing…" : "Test connection"}
             </button>
           </div>
+          <label for="backendKey">Backend access key</label>
+          <input
+            id="backendKey"
+            type="password"
+            autocomplete="off"
+            value={form.backendKey}
+            onInput={(e) => update("backendKey", e.currentTarget.value)}
+            placeholder="API_KEY from backend/.env"
+          />
           {test && <TestPanel result={test} usingOwnKey={Boolean(form.apiKey)} />}
         </section>
 
