@@ -43,6 +43,8 @@ PROVIDER_KEY_ENV = {
 
 class Settings(BaseSettings):
     data_dir: Path = BACKEND_DIR / "data"
+    # Empty = SQLite in data_dir. Live: postgresql+psycopg://user:pass@host/db
+    database_url: str = ""
 
     # Indexing
     embedding_model: str = "BAAI/bge-small-en-v1.5"
@@ -67,11 +69,29 @@ class Settings(BaseSettings):
     # Generation
     llm_provider: str = "groq"
     llm_model: str = DEFAULT_MODELS["groq"]
+    # USD per 1M tokens, [input, output]. Paid-tier list prices, so free-tier
+    # usage still shows what it would cost at scale. Models missing here are
+    # logged with cost NULL ("unpriced"). Override with LLM_PRICES='{"model": [in, out]}'.
+    # Source: ai.google.dev/gemini-api/docs/pricing, checked 2026-10-28
+    # (gemini-3.8-flash doubles on 2027-01-01). Groq didn't publish per-model prices there.
+    llm_prices: dict[str, list[float]] = {
+        "gemini-3.5-flash-lite": [0.30, 2.50],
+        "gemini-3.8-flash": [0.75, 3.75],
+        "gemini-2.5-flash": [0.30, 2.50],
+        "gemini-2.5-flash-lite": [0.10, 0.40],
+    }
     llm_temperature: float = 0.2
     llm_max_retries: int = 2
     context_token_budget: int = 3000  # transcript excerpts
     history_token_budget: int = 1500
     history_turns: int = 6
+
+    # Semantic answer cache (app/cache.py explains the two thresholds)
+    cache_enabled: bool = True
+    cache_min_similarity: float = 0.85
+    cache_min_keyword_overlap: float = 0.5
+    cache_ttl_days: int = 30
+    cache_max_per_video: int = 300
 
     # Guardrails
     max_message_chars: int = 2000

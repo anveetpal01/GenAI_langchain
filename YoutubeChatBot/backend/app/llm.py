@@ -42,6 +42,8 @@ def _build(provider: str, model: str, api_key: str | None) -> BaseChatModel:
     kwargs = {"temperature": s.llm_temperature, "max_retries": s.llm_max_retries}
     if api_key:
         kwargs["api_key"] = api_key  # BYOK; otherwise the provider reads its env var
+    if provider == "openai":
+        kwargs["stream_usage"] = True  # OpenAI omits token usage from streams otherwise
     return init_chat_model(model, model_provider=provider, **kwargs)
 
 

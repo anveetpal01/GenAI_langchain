@@ -21,3 +21,7 @@ sse-starlette>=2.1
 pydantic>=2.7
 pydantic-settings>=2.4
 python-dotenv>=1.0
+
+# Storage (SRS D-13): SQLite locally, Postgres live via DATABASE_URL
+sqlalchemy>=2.0
+psycopg[binary]>=3.2

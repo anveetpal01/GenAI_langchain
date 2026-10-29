@@ -163,10 +163,10 @@ Priority: **M** = Must (v1), **S** = Should (v1 if time permits), **C** = Could 
 ### 3.8 Evaluation — improvements §2
 | ID | Requirement | Pri |
 |---|---|---|
-| FR-EVAL-01 | **Ragas** offline evaluation over a versioned golden dataset (>= 5 videos x >= 10 Q/A each, with reference answers and reference chunks). Metrics: `faithfulness`, `answer_relevancy`, `context_precision`, `context_recall`. Judge LLM = configured free provider. | M |
+| FR-EVAL-01 | **Ragas** reference-free evaluation (no hand-written golden dataset, see D-16): `faithfulness` and `answer_relevancy` scored by a judge LLM on a sample of real requests, across whatever videos users open. Judge LLM = configured free provider. | M |
 | FR-EVAL-02 | Results written to `evaluation/results/<git-sha>.json` plus a Markdown report; CI fails if any metric drops more than 5 points vs. baseline. | M |
 | FR-EVAL-03 | **LangSmith** tracing for every request when `LANGCHAIN_TRACING_V2=true`; traces tagged with `video_id`, `prompt_version`, `retrieval_strategy`. Off by default for privacy. | M |
-| FR-EVAL-04 | Baseline run recorded on the current notebook pipeline (similarity only, k = 1) so every improvement is measured against it. | M |
+| FR-EVAL-04 | ~~Baseline on a golden dataset~~ Dropped (D-16). Comparisons (e.g. cache/routing on vs off) use the same sampled real questions replayed through both configurations. | - |
 | FR-EVAL-05 | Config switch to compare retrieval strategies (similarity-only vs hybrid + rerank) within one eval run. | S |
 
 ---
@@ -215,6 +215,9 @@ Chunk    { id, video_id, chunk_index, start_s, end_s, text, token_count }   # Ch
 Session  { session_id PK, video_id FK, created_at, last_active_at }
 Message  { id PK, session_id FK, role, content, citations_json, prompt_version,
            latency_ms, tokens_in, tokens_out, created_at }
+Request  { id PK, created_at, video_id, session_id, status, error_code, route, provider, model,
+           prompt_version, cache_hit, tokens_in, tokens_out, cost_usd, usage_estimated,
+           latency_ms, ttft_ms, retrieval_ms, llm_ms, calls_json }   # per-request cost/latency log (D-13)
 EvalRun  { git_sha, dataset_version, strategy, faithfulness, answer_relevancy,
            context_precision, context_recall, created_at }
 ```
@@ -243,7 +246,7 @@ YoutubeChatBot/
 |   +-- manifest.json
 |   +-- package.json
 +-- evaluation/
-|   +-- datasets/golden_v1.jsonl
+|   +-- samples/        # sampled real questions for replay
 |   +-- run_ragas.py
 |   +-- results/
 +-- docs/
@@ -323,3 +326,10 @@ YoutubeChatBot/
 | D-9 | (2026-10-25) Chunk size reduced from ~600-800 to <= 400 tokens with 60-token overlap: `bge-small-en-v1.5` embeds at most 512 tokens and silently truncates the rest. Revisit if the embedding model changes. |
 | D-10 | (2026-10-25) Extension UI built with Preact + TypeScript + Vite (Section 5 option chosen over vanilla). |
 | D-11 | (2026-10-25) FR-UI-03 default: index on the first question, not on video change; auto-index on video change stays available as an option. |
+| D-12 | (2026-10-26) Prompt `qa-v2`: video details (title, channel from YouTube oEmbed, length) are a second allowed answer source besides transcript excerpts, cited by name instead of [n]; questions about them skip the not-in-video shortcut. |
+| D-13 | (2026-10-27) Semantic caching (routing later dropped, D-18), designed to run both locally and live. Storage behind one interface selected by `DATABASE_URL`: SQLite locally, Postgres + pgvector live (cache vectors, chat history, request/cost log). Cache is shared across users per video (videos are public). |
+| D-14 | ~~(2026-10-27) Router = small-LLM classifier.~~ Superseded by D-18: routing removed for now. |
+| D-15 | (2026-10-27) Dashboard, when built, is a built-in FastAPI `/dashboard` page. Postponed (D-18); the `requests` table already holds the numbers. |
+| D-16 | (2026-10-28) No golden dataset: the bot serves any video, so evaluation must not depend on hand-written answers for a few videos. Quality is tracked with reference-free metrics on sampled real requests, user thumbs up/down, and replaying sampled questions with features on vs off. |
+| D-17 | (2026-10-28) Semantic cache hit = cosine >= 0.85 AND content-word Jaccard >= 0.5 (or identical normalised text). Cosine alone was unsafe: 'Summarize the first half' scored 0.900 vs 'Summarize this video', while a true paraphrase scored 0.856. Lookups are always per video + scope (transcript hash, prompt version, embedding model), so similarity is computed in numpy over a few hundred rows; pgvector is not needed for the cache. Only first-turn answers are stored; time-local questions are never cached; `X-Cache: bypass` skips the cache for on/off replays (D-16). |
+| D-18 | (2026-10-29) Scope kept simple for v1 (first project): cost-aware routing removed (it was half-built and its live test found a bug); dashboard, Ragas judge, thumbs up/down and replay script postponed. Kept: extension, RAG pipeline, semantic cache, per-request cost/latency log, SQLite/Postgres layer. Video-details questions are recognised by intent patterns across video types (who is the singer/guest/teacher, who made this, title, channel), not by the bare word 'speaker'. |

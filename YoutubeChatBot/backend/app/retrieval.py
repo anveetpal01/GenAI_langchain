@@ -91,13 +91,14 @@ def mmr(
     return [int(cand[p]) for p in picked]
 
 
-def retrieve(index: VideoIndex, query: str) -> RetrievalResult:
+def retrieve(index: VideoIndex, query: str, query_vec: np.ndarray | None = None) -> RetrievalResult:
     s = get_settings()
     metrics: dict = {}
     timer = time.perf_counter
 
     t = timer()
-    query_vec = embed_query(query)
+    if query_vec is None:
+        query_vec = embed_query(query)
     dense = dense_search(index, query_vec, s.dense_k)
     metrics["dense_ms"] = round((timer() - t) * 1000)
 

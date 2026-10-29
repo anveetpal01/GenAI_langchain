@@ -53,6 +53,7 @@ def tokenize(text: str) -> list[str]:
 class VideoIndex:
     video_id: str
     title: str | None
+    channel: str | None
     language_code: str
     is_generated: bool
     transcript_hash: str
@@ -155,6 +156,7 @@ def get_status(video_id: str) -> dict:
             "chunks": meta["chunk_count"],
             "language": meta["language_code"],
             "title": meta.get("title"),
+            "channel": meta.get("channel"),
             "error": None,
         }
     if job and job["state"] == "failed":
@@ -178,17 +180,18 @@ def _transcript_hash(transcript: VideoTranscript) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def _fetch_title(video_id: str) -> str | None:
-    """Best effort via YouTube oEmbed (no API key needed)."""
+def _fetch_video_details(video_id: str) -> dict:
+    """Title and channel name via YouTube oEmbed (no API key needed). Best effort."""
     url = "https://www.youtube.com/oembed?" + urllib.parse.urlencode(
         {"url": f"https://www.youtube.com/watch?v={video_id}", "format": "json"}
     )
     try:
         with urllib.request.urlopen(url, timeout=5) as resp:
-            return json.load(resp).get("title")
+            data = json.load(resp)
+        return {"title": data.get("title"), "channel": data.get("author_name")}
     except Exception:
-        logger.warning("Could not fetch title for %s", video_id)
-        return None
+        logger.warning("Could not fetch video details for %s", video_id)
+        return {"title": None, "channel": None}
 
 
 def run_index_job(video_id: str, force: bool = False) -> None:
@@ -241,9 +244,11 @@ def index_video(video_id: str, force: bool = False) -> VideoIndex:
         ],
     )
 
+    details = _fetch_video_details(video_id)
     new_meta = {
         "video_id": video_id,
-        "title": _fetch_title(video_id),
+        "title": details["title"],
+        "channel": details["channel"],
         "language_code": transcript.language_code,
         "is_generated": transcript.is_generated,
         "transcript_hash": digest,
@@ -284,6 +289,7 @@ def load_index(video_id: str) -> VideoIndex | None:
     index = VideoIndex(
         video_id=video_id,
         title=meta.get("title"),
+        channel=meta.get("channel"),
         language_code=meta["language_code"],
         is_generated=meta["is_generated"],
         transcript_hash=meta["transcript_hash"],

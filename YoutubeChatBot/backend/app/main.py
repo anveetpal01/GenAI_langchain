@@ -60,7 +60,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origin_regex=rf"^(chrome-extension://({_ext_origins})|http://(localhost|127\.0\.0\.1)(:\d+)?)$",
     allow_methods=["GET", "POST", "DELETE"],
-    allow_headers=["Content-Type", "X-LLM-Provider", "X-LLM-Model", "X-LLM-API-Key"],
+    allow_headers=["Content-Type", "X-LLM-Provider", "X-LLM-Model", "X-LLM-API-Key", "X-Cache"],
 )
 
 
@@ -106,6 +106,7 @@ class VideoStatus(BaseModel):
     chunks: int | None = None
     language: str | None = None
     title: str | None = None
+    channel: str | None = None
     error: dict | None = None
 
 
@@ -171,10 +172,12 @@ async def chat(
     x_llm_provider: Annotated[str | None, Header()] = None,
     x_llm_model: Annotated[str | None, Header()] = None,
     x_llm_api_key: Annotated[str | None, Header()] = None,
+    x_cache: Annotated[str | None, Header()] = None,
 ):
     ctx = prepare_chat(
         video_id, body.session_id, body.message, body.playback_time,
         provider=x_llm_provider, model=x_llm_model, api_key=x_llm_api_key,
+        use_cache=(x_cache or "").lower() != "bypass",
     )
 
     async def events():
