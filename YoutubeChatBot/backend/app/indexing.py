@@ -194,10 +194,15 @@ def _fetch_video_details(video_id: str) -> dict:
         return {"title": None, "channel": None}
 
 
-def run_index_job(video_id: str, force: bool = False) -> None:
+def run_index_job(
+    video_id: str,
+    force: bool = False,
+    transcript: VideoTranscript | None = None,
+    details: dict | None = None,
+) -> None:
     """Background-task entry point. Call `try_start_job` first."""
     try:
-        index_video(video_id, force=force)
+        index_video(video_id, force=force, transcript=transcript, details=details)
         with _jobs_lock:
             _jobs.pop(video_id, None)
     except TranscriptError as e:
@@ -212,14 +217,22 @@ def run_index_job(video_id: str, force: bool = False) -> None:
             }
 
 
-def index_video(video_id: str, force: bool = False) -> VideoIndex:
+def index_video(
+    video_id: str,
+    force: bool = False,
+    transcript: VideoTranscript | None = None,
+    details: dict | None = None,
+) -> VideoIndex:
+    """`transcript` / `details` come from the extension when given (the
+    user's browser can reach YouTube; a cloud server often can't). Without
+    them the server fetches captions and title itself."""
     settings = get_settings()
     if not force and _is_ready(_read_meta(video_id)):
         logger.info("Index for %s is current, skipping", video_id)
         return load_index(video_id)
 
     t0 = time.perf_counter()
-    transcript = get_transcript(video_id)
+    transcript = transcript or get_transcript(video_id)
     digest = _transcript_hash(transcript)
     chunks = chunk_transcript(
         transcript,
@@ -244,7 +257,7 @@ def index_video(video_id: str, force: bool = False) -> VideoIndex:
         ],
     )
 
-    details = _fetch_video_details(video_id)
+    details = details or _fetch_video_details(video_id)
     new_meta = {
         "video_id": video_id,
         "title": details["title"],

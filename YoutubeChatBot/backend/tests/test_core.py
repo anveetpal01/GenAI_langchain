@@ -309,3 +309,31 @@ def test_cache_is_bounded_per_video(cache_db, monkeypatch):
         cache_db.save("abcdefghijk", "s", f"question number {i}", _unit(1, i), "A", [], f"r{i}")
     with cache_db.get_engine().connect() as conn:
         assert conn.execute(select(func.count()).select_from(answer_cache)).scalar_one() == 3
+
+
+# ---------------------------------------------------------------- captions from the extension
+
+def test_transcript_from_client_cleans_and_orders():
+    from app.transcript import transcript_from_client
+
+    t = transcript_from_client(
+        "abcdefghijk",
+        [
+            {"text": "second\nline", "start_s": 4.16, "end_s": 10.1666},
+            {"text": "  ", "start_s": 2.0, "end_s": 3.0},  # empty: dropped
+            {"text": "first", "start_s": 0.0, "end_s": 7.2},
+            {"text": "bad end", "start_s": 12.0, "end_s": 11.0},  # end before start: clamped
+        ],
+        "en",
+        True,
+    )
+    assert [c.text for c in t.captions] == ["first", "second line", "bad end"]
+    assert t.captions[1].end_s == 10.17 and t.captions[2].end_s == 12.0
+    assert (t.language_code, t.is_generated) == ("en", True)
+
+
+def test_transcript_from_client_rejects_empty():
+    from app.transcript import TranscriptError, transcript_from_client
+
+    with pytest.raises(TranscriptError):
+        transcript_from_client("abcdefghijk", [{"text": " ", "start_s": 0, "end_s": 1}], "en", False)

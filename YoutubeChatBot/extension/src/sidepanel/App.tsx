@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { ApiError, BackendClient, type VideoStatus } from "../shared/api";
-import type { TimeResponse } from "../shared/messages";
+import type { TimeResponse, TranscriptPayload, TranscriptResponse } from "../shared/messages";
 import {
   type ChatMessage,
   type Settings,
@@ -23,6 +23,24 @@ interface ChatState {
 function errorMessage(err: unknown): ChatMessage {
   if (err instanceof ApiError) return { id: newId(), role: "error", content: err.message, code: err.code };
   return { id: newId(), role: "error", content: "Something went wrong. Please try again." };
+}
+
+/** Captions fetched by the YouTube tab itself (YouTube blocks cloud servers).
+ *  null = let the backend fetch them: no content script in the tab yet, or the
+ *  dev shim. A YouTube-side problem (e.g. no captions) is shown to the user. */
+function transcriptFrom(tabId: number | null, videoId: string): () => Promise<TranscriptPayload | null> {
+  return async () => {
+    if (tabId == null) return null;
+    let res: TranscriptResponse | undefined;
+    try {
+      res = await sendToTab<TranscriptResponse>(tabId, { type: "get-transcript", videoId });
+    } catch {
+      return null;
+    }
+    if (!res) return null;
+    if (!res.ok) throw new ApiError(res.code, res.message);
+    return res.transcript;
+  };
 }
 
 export function App() {
@@ -59,7 +77,9 @@ export function App() {
     void loadChat(videoId).then((chat) => !cancelled && setState({ videoId, chat }));
     const api = new BackendClient(settings);
     const ready = settings.autoIndex
-      ? api.ensureIndexed(videoId, (s) => !cancelled && setStatus(s))
+      ? api.ensureIndexed(videoId, (s) => !cancelled && setStatus(s), {
+          getTranscript: transcriptFrom(video.tabId, videoId),
+        })
       : api.status(videoId).then((s) => !cancelled && setStatus(s));
     ready.catch(() => {}); // surfaced when the user asks a question
     return () => {
@@ -95,7 +115,7 @@ export function App() {
       );
 
     try {
-      await client.ensureIndexed(forVideo, setStatus);
+      await client.ensureIndexed(forVideo, setStatus, { getTranscript: transcriptFrom(video.tabId, forVideo) });
 
       let playbackTime: number | null = null;
       if (video.tabId != null && video.contentScriptReady) {
@@ -151,7 +171,10 @@ export function App() {
   const reindex = async () => {
     if (!videoId || !client) return;
     try {
-      await client.ensureIndexed(videoId, setStatus, { force: true });
+      await client.ensureIndexed(videoId, setStatus, {
+        force: true,
+        getTranscript: transcriptFrom(video.tabId, videoId),
+      });
     } catch (err) {
       updateMessages(videoId, (m) => [...m, errorMessage(err)]);
     }

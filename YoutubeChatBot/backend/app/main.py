@@ -24,6 +24,7 @@ from app.config import get_settings
 from app.guardrails import GuardrailError
 from app.llm import LLMConfigError, has_key, resolve
 from app.rag import ChatError, prepare_chat, stream_chat
+from app.transcript import TranscriptError, transcript_from_client
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("app")
@@ -116,6 +117,23 @@ class VideoStatus(BaseModel):
     error: dict | None = None
 
 
+class CaptionIn(BaseModel):
+    text: str = Field(max_length=2_000)
+    start_s: float = Field(ge=0)
+    end_s: float = Field(ge=0)
+
+
+class IndexRequest(BaseModel):
+    """Captions fetched by the extension in the user's browser. YouTube blocks
+    transcript requests from cloud servers, so on AWS this is the main path."""
+
+    captions: list[CaptionIn] = Field(min_length=1, max_length=50_000)
+    language_code: str = Field(max_length=16)
+    is_generated: bool
+    title: str | None = Field(default=None, max_length=300)
+    channel: str | None = Field(default=None, max_length=300)
+
+
 class ChatRequest(BaseModel):
     session_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,64}$")
     message: str = Field(min_length=1, max_length=10_000)  # real limit enforced by guardrails
@@ -157,12 +175,25 @@ def readyz():
 
 
 @app.post("/v1/videos/{video_id}/index", status_code=status.HTTP_202_ACCEPTED, response_model=VideoStatus, dependencies=[Depends(require_api_key)])
-def index_video(video_id: VideoId, background: BackgroundTasks, force: bool = False):
+def index_video(
+    video_id: VideoId, background: BackgroundTasks, force: bool = False, body: IndexRequest | None = None
+):
     current = indexing.get_status(video_id)
     if current["state"] == "ready" and not force:
         return VideoStatus(video_id=video_id, **current)
+
+    transcript = details = None
+    if body is not None:
+        try:
+            transcript = transcript_from_client(
+                video_id, [c.model_dump() for c in body.captions], body.language_code, body.is_generated
+            )
+        except TranscriptError as e:
+            raise GuardrailError(e.code, e.message, status=422) from e
+        details = {"title": body.title, "channel": body.channel}
+
     if indexing.try_start_job(video_id):
-        background.add_task(indexing.run_index_job, video_id, force)
+        background.add_task(indexing.run_index_job, video_id, force, transcript, details)
     return VideoStatus(video_id=video_id, **indexing.get_status(video_id))
 
 

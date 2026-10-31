@@ -1,5 +1,6 @@
 // Typed client for the FastAPI backend (backend/README.md).
 import { readSse } from "./sse";
+import type { TranscriptPayload } from "./messages";
 import type { Citation, Settings } from "./storage";
 
 export type IndexState = "not_indexed" | "indexing" | "ready" | "failed";
@@ -81,20 +82,33 @@ export class BackendClient {
     return (await this.request(`/v1/videos/${videoId}/status`)).json();
   }
 
-  async startIndex(videoId: string, force = false): Promise<VideoStatus> {
-    const res = await this.request(`/v1/videos/${videoId}/index?force=${force}`, { method: "POST" });
+  /** With a transcript the backend indexes it as is; without one it fetches
+   *  the captions itself (works locally, blocked on cloud servers). */
+  async startIndex(videoId: string, force = false, transcript: TranscriptPayload | null = null): Promise<VideoStatus> {
+    const init: RequestInit = { method: "POST" };
+    if (transcript) {
+      init.headers = { "Content-Type": "application/json" };
+      init.body = JSON.stringify(transcript);
+    }
+    const res = await this.request(`/v1/videos/${videoId}/index?force=${force}`, init);
     return res.json();
   }
 
-  /** Start indexing if needed and wait until the video is ready. */
+  /** Start indexing if needed and wait until the video is ready.
+   *  `getTranscript` is only called when the video actually needs indexing. */
   async ensureIndexed(
     videoId: string,
     onStatus: (s: VideoStatus) => void,
-    { force = false, timeoutMs = 180_000 } = {},
+    {
+      force = false,
+      timeoutMs = 180_000,
+      getTranscript,
+    }: { force?: boolean; timeoutMs?: number; getTranscript?: () => Promise<TranscriptPayload | null> } = {},
   ): Promise<VideoStatus> {
-    let status = force ? await this.startIndex(videoId, true) : await this.status(videoId);
-    if (!force && status.state !== "ready" && status.state !== "indexing") {
-      status = await this.startIndex(videoId);
+    let status = force ? null : await this.status(videoId);
+    if (!status || (status.state !== "ready" && status.state !== "indexing")) {
+      const transcript = getTranscript ? await getTranscript() : null;
+      status = await this.startIndex(videoId, force, transcript);
     }
     const deadline = Date.now() + timeoutMs;
     while (status.state === "indexing") {

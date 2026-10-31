@@ -84,6 +84,26 @@ def _clean_text(text: str) -> str:
     return " ".join(text.split())
 
 
+def transcript_from_client(
+    video_id: str, captions: list[dict], language_code: str, is_generated: bool
+) -> VideoTranscript:
+    """Build a transcript from captions the extension fetched in the user's
+    browser (YouTube blocks transcript requests from cloud servers). Cleaned
+    the same way as fetched captions."""
+    cleaned = [
+        Caption(
+            text=_clean_text(c["text"]),
+            start_s=round(c["start_s"], 2),
+            end_s=round(max(c["end_s"], c["start_s"]), 2),
+        )
+        for c in sorted(captions, key=lambda c: c["start_s"])
+        if c["text"].strip()
+    ]
+    if not cleaned:
+        raise TranscriptError("no_captions", "The captions sent for this video are empty.", video_id)
+    return VideoTranscript(video_id, language_code, is_generated, cleaned)
+
+
 def get_transcript(video_id: str) -> VideoTranscript:
     """Return the captions of `video_id` with start/end times in seconds.
 
