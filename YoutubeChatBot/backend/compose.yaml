@@ -18,7 +18,7 @@ services:
     build: .
     image: yt-chatbot-api:dev
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     env_file: .env
     environment:
       DATABASE_URL: postgresql+psycopg://yt:${POSTGRES_PASSWORD}@db:5432/ytchat
@@ -30,9 +30,27 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["prod"]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+    restart: unless-stopped
+
 volumes:
   pgdata:
   yt-models:
     name: yt-models
   yt-data:
     name: yt-data
+  caddy_data:
+  caddy_config:
